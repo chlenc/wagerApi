@@ -1,11 +1,11 @@
 from app import app
 from flask import request, make_response, jsonify
-from app.database import getUserByUsername, setNewPendingUser
+from app.database import getUserByUsername, setNewPendingUser, getPendingUser, registerUser
 from app.decorators import token_required
 import jwt
 import datetime
 
-# from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from app.utils import randomString, sendEmailWithLink
 
 
@@ -19,21 +19,24 @@ def login():
         username = req['username']
         password = req['password']
 
+    return doLogin(username, password)
+
+
+def doLogin(username, password):
     if username is None or password is None:
-        return make_response('Username and password required!', 401,
-                             {'WWW-Authenticate': 'Basic realm="Login Required"'})
+        return make_response('Username and password required!', 401)
 
     userData = getUserByUsername(username, False)
-    if userData is not None and userData[1] == username and userData[2] == password:
-        # check_password_hash(userData[1], password):
+    if userData is not None and userData[1] == username and check_password_hash(userData[2], password):
         # todo https://flask-jwt-extended.readthedocs.io/en/stable/refresh_tokens/
         token = jwt.encode({
             'user': username,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
         }, app.config['SECRET_KEY'])
+        print(token)
         return jsonify({'access_token': token.decode('UTF-8')})
 
-    return make_response('Invalid username or password!', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+    return make_response('Invalid username or password!', 401)
 
 
 @app.route('/checkUser', methods=['POST'])
@@ -68,6 +71,39 @@ def registerReq():
                 return make_response('Something wrong!', 403)
 
     return make_response('User already exists!', 403)
+
+
+@app.route('/checkHash', methods=['POST'])
+def checkHash():
+    req = request.get_json()
+    hash = None
+    if 'hash' in req:
+        hash = req['hash']
+    if hash is not None:
+        userData = getPendingUser(hash)
+        if userData is not None:
+            return 'success'
+        else:
+            return make_response('User not found', 401)
+
+    return make_response('User not found', 401)
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    req = request.get_json()
+    hash = None
+    password = None
+    if 'hash' in req and 'password' in req:
+        hash = req['hash']
+        password = req['password']
+    if hash is not None and password is not None:
+        userData = getPendingUser(hash)
+        if userData is not None:
+            registerUser(password, str(hash), 'random seed')
+            return doLogin(userData[1], password)
+
+    return make_response('User not found', 401)
 
 
 @app.route('/auth')
