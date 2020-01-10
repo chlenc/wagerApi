@@ -14,7 +14,7 @@ def getUserByUsername(username, all_statuses):
     cursor = conn.cursor()
 
     sqlReq = 'SELECT * FROM users WHERE username = %(username)s '
-    if all_statuses:
+    if not all_statuses:
         sqlReq = sqlReq + 'and status = \'registered\' '
     sqlReq = sqlReq + ' LIMIT 1'
 

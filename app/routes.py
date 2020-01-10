@@ -43,7 +43,7 @@ def checkUser():
     if 'username' in req:
         username = req['username']
     if username is not None:
-        userData = getUserByUsername(username, True)
+        userData = getUserByUsername(username, False)
         if userData is not None:
             return 'success'
 
