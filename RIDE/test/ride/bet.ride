@@ -1,0 +1,220 @@
+{-# STDLIB_VERSION 3 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+#the event probability is equal 
+let q1start =  190 #two number after digit
+let q2start = 190 #two number after digit
+let vig = 52 #two number after digit
+let riskAmount = 1000 #sum in waves which we can lost
+let betThreshold = 10
+let betMin = 1
+let betMax = 100
+
+#this functions for extracting all variables
+func q1Extract() = {
+    let q1 = if this.getInteger("q1_next").isDefined() then this.getIntegerValue("q1_next") else q1start
+    q1
+}
+
+func q2Extract() = {
+    let q2 = if this.getInteger("q2_next").isDefined() then this.getIntegerValue("q2_next") else q2start  
+    q2
+}
+
+func debtAmount1Extract() = {
+    let debtAmount1 = if this.getInteger("debtAmount1").isDefined() then this.getIntegerValue("debtAmount1") else 0
+    debtAmount1
+}
+
+func debtAmount2Extract() = {
+    let debtAmount2 = if this.getInteger("debtAmount2").isDefined() then this.getIntegerValue("debtAmount2") else 0
+    debtAmount2
+}
+
+# coef updating functions
+func calcCoefIfBigBet( event: String,betAmount: Int,q:Int) = {
+    #let q = this.getIntegerValue(event)
+    let k =  (1*100000 - q*1000)/(betMax - betThreshold) #scaled to 1:100000
+    let b = 1*100000 - k*betMax
+    let qCorrected = (betAmount*k + b)/1000 # back to two number after digit
+    qCorrected
+}
+
+func anothercoef(q: Int,vig:Int) ={
+    let anothercoef =  pow(vig+1000-100000/q,0,-1,0,5,DOWN)
+    anothercoef
+}
+func actualNewCoefs(betAmount: Int,debtAmount1:Int,debtAmount2: Int) ={
+    if debtAmount1 < 0 then{
+        let k = (1*1000000 - q1start*10000)/(riskAmount)  #scaled to 1:1000000
+        let b = 1*1000000 - k*riskAmount
+        let q1 = (-k*debtAmount1+b)/10000# back to two number after digit
+        let q2 = anothercoef(q1,vig)
+        [q1,q2]
+    }
+    else if debtAmount1 > 0 then{
+        let k = (1*1000000 - q2start*10000)/(riskAmount)
+        let b = 1*1000000 - k*riskAmount
+        let q2 = (-k*debtAmount2 + b)/10000# back to two number after digit
+        let q1 = anothercoef(q2,vig)
+        [q1,q2]
+    }
+    else {
+        let q1 = q1start
+        let q2 = q2start
+        [q1, q2]
+    }
+    
+}
+
+
+@Callable(contextObj)
+func bet(event: Int) ={
+    let betAmount = match(contextObj.payment) {
+        case p:AttachedPayment => if ( p.amount < betMin) then (throw("low payment")) else p.amount
+        case _ => throw("Payment not attached")
+    }    
+    let count = if this.getInteger("count").isDefined() then this.getIntegerValue("count") else 0 #count of bets
+    let event1DebtForThisPlayer = if this.getInteger(toString(contextObj.caller) + "_event1DebtForThisPlayer").isDefined() then 
+        this.getIntegerValue(toString(contextObj.caller) + "_event1DebtForThisPlayer") else 0
+    let event2DebtForThisPlayer = if this.getInteger(toString(contextObj.caller) + "_event2DebtForThisPlayer").isDefined() then 
+        this.getIntegerValue(toString(contextObj.caller) + "_event2DebtForThisPlayer") else 0
+    let debtAmount1 = debtAmount1Extract()
+    let debtAmount2 = debtAmount2Extract()
+    let q1 = q1Extract()
+    let q2 = q2Extract()
+    let countNew = count + 1 
+    if (event == 1) then(
+        if betAmount <= betThreshold then{
+            let event1DebtForThisPlayerNew = event1DebtForThisPlayer + q1*betAmount
+            let debtAmount1New = debtAmount1 + betAmount - q1*betAmount/100 #q1 are 100 times scaled
+            let debtAmount2New = debtAmount2 + betAmount
+            let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
+            let q1Next = q1Nextq2Next[0]
+            let q2Next = q1Nextq2Next[1]
+            WriteSet([
+                DataEntry(toString(contextObj.caller) + "_event1DebtForThisPlayer",event1DebtForThisPlayerNew),
+                DataEntry(toString(countNew)+"_event",event),
+                DataEntry(toString(countNew)+"_qoef1", q1),
+                DataEntry(toString(countNew)+"_bettor", toString(contextObj.caller)),
+                DataEntry(toString(countNew)+"_qoef2", q2),                
+                DataEntry("debtAmount1", debtAmount1New),
+                DataEntry("debtAmount2", debtAmount2New),
+                DataEntry("q1_next", q1Next),
+                DataEntry("q2_next", q2Next),
+                DataEntry("count", countNew)
+                ])
+        }
+        else if betAmount > betThreshold && betAmount < betMax then{
+            let q1Corrected = calcCoefIfBigBet( "q1_next",betAmount,q1)# q1_next in dapp's state is actual coef
+            let event1DebtForThisPlayerNew = event1DebtForThisPlayer + q1Corrected*betAmount
+            let debtAmount1New = debtAmount1 + betAmount - q1Corrected*betAmount/100 #q1 are 100 times scaled
+            let debtAmount2New = debtAmount2 + betAmount
+            let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
+            let q1Next = q1Nextq2Next[0]
+            let q2Next = q1Nextq2Next[1]
+            WriteSet([
+                DataEntry(toString(contextObj.caller) + "_event1DebtForThisPlayer",event1DebtForThisPlayerNew),
+                DataEntry(toString(countNew)+"_event",event),
+                DataEntry(toString(countNew)+"_Correctedqoef1", q1Corrected),
+                DataEntry(toString(countNew)+"_qoef1", q1),
+                DataEntry(toString(countNew)+"_qoef2", q2),
+                DataEntry(toString(countNew)+"_bettor", toString(contextObj.caller)),
+                DataEntry("debtAmount1", debtAmount1New),
+                DataEntry("debtAmount2", debtAmount2New),
+                DataEntry("q1_next", q1Next),
+                DataEntry("q2_next", q2Next),
+                DataEntry("count", countNew)
+                ])  
+        }
+        else throw("incorrect bet amount")     
+    )
+    else if event == 2 then(
+        if betAmount <= betThreshold then
+            let event2DebtForThisPlayerNew = event2DebtForThisPlayer + q2*betAmount
+            let debtAmount2New = debtAmount2 + betAmount - q2*betAmount/100 #q2 are 100 times scaled
+            let debtAmount1New = debtAmount1 + betAmount 
+            let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
+            let q1Next = q1Nextq2Next[0]
+            let q2Next = q1Nextq2Next[1]
+            WriteSet([
+                DataEntry(toString(contextObj.caller) + "_event2DebtForThisPlayer",event2DebtForThisPlayerNew),
+                DataEntry(toString(countNew)+"_event",event),
+                DataEntry(toString(countNew)+"_qoef1", q1),
+                DataEntry(toString(countNew)+"_qoef2", q2),
+                DataEntry(toString(countNew)+"_bettor", toString(contextObj.caller)),
+                DataEntry("debtAmount1", debtAmount1New),
+                DataEntry("debtAmount2", debtAmount2New),
+                DataEntry("q1_next", q1Next),
+                DataEntry("q2_next", q2Next),
+                DataEntry("count", countNew)
+                ])
+        else if betAmount > betThreshold && betAmount < betMax then
+            let q2Corrected = calcCoefIfBigBet( "q2_next",betAmount,q2) # q1_next in dapp's state is actual coef
+            let event2DebtForThisPlayerNew = event2DebtForThisPlayer + q2Corrected*betAmount
+            let debtAmount2New = debtAmount2 + betAmount - q2Corrected*betAmount/100 #q1 are 100 times scaled
+            let debtAmount1New = debtAmount1 + betAmount
+            let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
+            let q1Next = q1Nextq2Next[0]
+            let q2Next = q1Nextq2Next[1]
+            WriteSet([
+                DataEntry(toString(contextObj.caller) + "_event2DebtForThisPlayer",event2DebtForThisPlayerNew),
+                DataEntry(toString(countNew)+"_event",event),
+                DataEntry(toString(countNew)+"_bettor", toString(contextObj.caller)),
+                DataEntry(toString(countNew)+"_Correctedqoef2", q2Corrected),
+                DataEntry(toString(countNew)+"_qoef1", q1),
+                DataEntry(toString(countNew)+"_qoef2", q2),
+                DataEntry("debtAmount1", debtAmount1New),
+                DataEntry("debtAmount2", debtAmount2New),
+                DataEntry("q1_next", q1Next),
+                DataEntry("q2_next", q2Next),
+                DataEntry("count", countNew)
+                ])      
+        else throw("incorrect bet amount")     
+    )
+    else throw("incorrect event id")
+}
+
+@Callable(contextObj)
+func withdraw() =   {
+
+    let event1amount = match(getInteger(this,toString(contextObj.caller) + "__event1DebtForThisPlayer")){
+        case u:Unit => 0
+        case i:Int => i
+    }
+
+    let event2amount = match(getInteger(this,toString(contextObj.caller) + "__event2DebtForThisPlayer")){
+        case u:Unit => 0
+        case i:Int => i
+    }
+    
+    let event1 = match(getBoolean(this,"result_event_1")){
+        case u:Unit => false 
+        case b:Boolean=> b
+    }
+
+    let event2 = match(getBoolean(this,"result_event_2")){
+        case u:Unit => false
+        case b:Boolean=>b
+    }
+if (event1)
+     then (
+         ScriptResult(
+                WriteSet([DataEntry(toString(contextObj.caller) + "_event1amount", 0)]),
+                TransferSet([ScriptTransfer(contextObj.caller,event1amount*1000000, unit)])
+                )
+     )
+    else( 
+        if (event2) then (
+        ScriptResult(
+               WriteSet([DataEntry(toString(contextObj.caller) + "_event2amount", 0)]),
+               TransferSet([ScriptTransfer(contextObj.caller,event2amount*1000000, unit)])
+               )
+    )
+    else throw("event did not happen or you have zero win")
+    )
+} 
+
+#
+#@Verifier(contextObj)
+#func verify() = true #false
