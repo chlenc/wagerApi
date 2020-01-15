@@ -53,11 +53,18 @@ def setNewPendingUser(username, pendingHash):
 
 
 def registerUser(password, pendinghash, seed):
-    print(password, pendinghash, seed)
     cursor = conn.cursor()
     cursor.execute(
         'UPDATE users SET password = %(password)s, seed = %(seed)s, status = \'registered\', pendinghash = NULL WHERE pendinghash = %(pendinghash)s;',
         {'pendinghash': pendinghash, 'password': generate_password_hash(password), 'seed': seed}
-        )
+    )
     conn.commit()
     cursor.close()
+
+
+def getEvents():
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM events")
+    records = cursor.fetchall()
+    cursor.close()
+    return records

@@ -1,6 +1,6 @@
 from app import app
 from flask import request, make_response, jsonify
-from app.database import getUserByUsername, setNewPendingUser, getPendingUser, registerUser
+from app.database import getUserByUsername, setNewPendingUser, getPendingUser, registerUser, getEvents
 from app.decorators import token_required
 import jwt
 import datetime
@@ -33,8 +33,8 @@ def doLogin(username, password):
             'user': username,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
         }, app.config['SECRET_KEY'])
-        print(token)
-        return jsonify({'access_token': token.decode('UTF-8')})
+        # todo return encrypted seed
+        return jsonify({'access_token': token.decode('UTF-8'), 'seed': userData[3]})
 
     return make_response('Invalid username or password!', 401)
 
@@ -94,16 +94,24 @@ def register():
     req = request.get_json()
     hash = None
     password = None
+    seed = None
     if 'hash' in req and 'password' in req:
         hash = req['hash']
         password = req['password']
-    if hash is not None and password is not None:
+        seed = req['seed']
+    if hash is not None and password is not None and seed is not None:
         userData = getPendingUser(hash)
         if userData is not None:
-            registerUser(password, str(hash), 'random seed')
+            registerUser(password, str(hash), seed)
             return doLogin(userData[1], password)
 
     return make_response('User not found', 401)
+
+
+@app.route('/events')
+def events():
+    data = getEvents()
+    return jsonify(data)
 
 
 @app.route('/auth')
