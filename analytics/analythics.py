@@ -91,7 +91,7 @@ class COEFS():
 coefs = COEFS()
 E = []
 q = []
-for i in range(500):
+for i in range(100):
     event = random.randint(1,2)
     coefs.bet(1,10)
     print(event,"q_1 =", coefs.q_1, "q2 =", coefs.q_2,"debt1 =", coefs.debtAmount1,"debt2 =", coefs.debtAmount2, "E =",coefs.E)

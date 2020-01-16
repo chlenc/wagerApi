@@ -6,9 +6,9 @@
     const script = compile(file('../ride/bet.ride'));
 
     // You can set env varibles via cli arguments. E.g.: `surfboard run path/to/script  --variables 'dappSeed=seed phrase,secondVariable=200'`
-    const dappSeed = "wfwfasfasfasasfasfasfasfasfasf";
-    const dappAddress = "3MvuSn7KBR39PoLQ9jDM117mDyzFuBJs3qy"
-    const playerSeed = "kdfmbksdkvmsd ksmf dsmfl skkmf sdlf"
+    const dappSeed = "saasfasfasfas fasaf afs  asfa s";
+    const dappAddress = "3Mu7V7BTQdkPGTNfLjVQzj96V32k7bsJWE1"
+    const playerSeed = "asfas asf as fas fas afsa safs"
 
     if (dappSeed == null){
         throw new Error(`Please provide dappSedd`)
@@ -25,7 +25,7 @@
 
     const params = {
         call: {
-            args: [{type:'integer', value: 2}],
+            args: [{type:'integer', value: 1}],
         function: 'bet',
         },
         payment: [{
@@ -43,5 +43,5 @@
     const iTxBet10 = invokeScript(params, playerSeed)
     await broadcast(iTxBet10);
     await waitForTx(iTxBet10.id);
-    console.log(iTxBet10["params"]);
+    console.log(iTxBet10);
 })();

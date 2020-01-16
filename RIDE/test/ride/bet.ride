@@ -86,8 +86,8 @@ func bet(event: Int) ={
     let countNew = count + 1 
     if (event == 1) then(
         if betAmount <= betThreshold then{
-            let event1DebtForThisPlayerNew = event1DebtForThisPlayer + q1*betAmount
-            let debtAmount1New = debtAmount1 + betAmount - q1*betAmount/100 #q1 are 100 times scaled
+            let event1DebtForThisPlayerNew = event1DebtForThisPlayer + q1*betAmount/100 #q1 are 100 times scaled
+            let debtAmount1New = debtAmount1 + betAmount - q1*betAmount/100 #q1 is 100 times scaled
             let debtAmount2New = debtAmount2 + betAmount
             let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
             let q1Next = q1Nextq2Next[0]
@@ -107,8 +107,8 @@ func bet(event: Int) ={
         }
         else if betAmount > betThreshold && betAmount < betMax then{
             let q1Corrected = calcCoefIfBigBet( "q1_next",betAmount,q1)# q1_next in dapp's state is actual coef
-            let event1DebtForThisPlayerNew = event1DebtForThisPlayer + q1Corrected*betAmount
-            let debtAmount1New = debtAmount1 + betAmount - q1Corrected*betAmount/100 #q1 are 100 times scaled
+            let event1DebtForThisPlayerNew = event1DebtForThisPlayer + q1Corrected*betAmount/100 #q1 is 100 times scaled
+            let debtAmount1New = debtAmount1 + betAmount - q1Corrected*betAmount/100 #q1 is 100 times scaled
             let debtAmount2New = debtAmount2 + betAmount
             let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
             let q1Next = q1Nextq2Next[0]
@@ -131,8 +131,8 @@ func bet(event: Int) ={
     )
     else if event == 2 then(
         if betAmount <= betThreshold then
-            let event2DebtForThisPlayerNew = event2DebtForThisPlayer + q2*betAmount
-            let debtAmount2New = debtAmount2 + betAmount - q2*betAmount/100 #q2 are 100 times scaled
+            let event2DebtForThisPlayerNew = event2DebtForThisPlayer + q2*betAmount/100 #q2 is 100 times scaled
+            let debtAmount2New = debtAmount2 + betAmount - q2*betAmount/100 #q2 is 100 times scaled
             let debtAmount1New = debtAmount1 + betAmount 
             let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
             let q1Next = q1Nextq2Next[0]
@@ -151,8 +151,8 @@ func bet(event: Int) ={
                 ])
         else if betAmount > betThreshold && betAmount < betMax then
             let q2Corrected = calcCoefIfBigBet( "q2_next",betAmount,q2) # q1_next in dapp's state is actual coef
-            let event2DebtForThisPlayerNew = event2DebtForThisPlayer + q2Corrected*betAmount
-            let debtAmount2New = debtAmount2 + betAmount - q2Corrected*betAmount/100 #q1 are 100 times scaled
+            let event2DebtForThisPlayerNew = event2DebtForThisPlayer + q2Corrected*betAmount/100 #q2 is 100 times scaled
+            let debtAmount2New = debtAmount2 + betAmount - q2Corrected*betAmount/100 #q2 aisre 100 times scaled
             let debtAmount1New = debtAmount1 + betAmount
             let q1Nextq2Next = actualNewCoefs(betAmount,debtAmount1New,debtAmount2New)
             let q1Next = q1Nextq2Next[0]
